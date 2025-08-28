@@ -1,0 +1,5 @@
+<apex:page >
+    <apex:image value="{!URLFOR($Resource.vfimagetest, 'cats/kitten1.jpg')}" 
+                alt="Kitten 1" 
+                title="Cute Kitten"/>
+</apex:page>

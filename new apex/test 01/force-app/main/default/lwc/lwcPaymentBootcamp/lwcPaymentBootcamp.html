@@ -1,0 +1,206 @@
+<template>
+    <!-- MAIN CARD -->
+    <lightning-card title="📁 Smart Invoicing Center">
+        <div slot="actions" class="slds-m-bottom_medium">
+            <lightning-button name="btnRefresh" label="Refresh" variant="brand"
+                onclick={handleClick}></lightning-button>
+            <lightning-button name="btnNew" label="New" variant="brand" class="slds-m-left_small"
+                onclick={handleClick}></lightning-button>
+        </div>
+
+        <!-- Status Filter -->
+        <lightning-layout multiple-rows="true" class="slds-p-horizontal_small slds-p-top_small">
+            <lightning-layout-item size="12">
+                <lightning-combobox label="Filter by Status" onchange={handleFilterChange} options={statusOptions}
+                    value={status}></lightning-combobox>
+            </lightning-layout-item>
+        </lightning-layout>
+
+
+        <!-- Payment Method Filter -->
+        <lightning-layout multiple-rows="true" class="slds-p-horizontal_small slds-p-top_small">
+            <lightning-layout-item size="12">
+                <lightning-combobox label="Filter by Payment Method" onchange={handleFilterChange}
+                    options={methodOptions} value={method}></lightning-combobox>
+            </lightning-layout-item>
+        </lightning-layout>
+
+        <!-- INVOICES TABLE -->
+        <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-table_striped slds-m-top_small">
+            <thead>
+                <tr>
+                    <template if:true={tableHeaders} for:each={tableHeaders} for:item="tableHead">
+                        <th key={tableHead.id}>{tableHead.label}</th>
+                    </template>
+                </tr>
+            </thead>
+            <tbody>
+                <template if:true={invoices} for:each={invoices} for:item="invoice">
+                    <tr key={invoice.Id}>
+                        <td>{invoice.Name}</td>
+                        <td>{invoice.customerName}</td>
+                        <td>{invoice.Status__c}</td>
+                        <td>{invoice.Amount__c}</td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+
+        <!-- LOADING SPINNER -->
+        <template if:true={isLoading}>
+            <div class="slds-align_absolute-center slds-p-around_medium">
+                <lightning-spinner alternativetext="Loading..." size="small"></lightning-spinner>
+            </div>
+        </template>
+    </lightning-card>
+
+    <!-- MODAL FORM (CREATE / UPDATE) -->
+    <template if:true={showFormNew}>
+        <div class="demo-only" style="height: 600px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true"
+                aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container" style="position: relative;">
+                    <!-- Header of Modal -->
+                    <header class="slds-modal__header">
+                        <lightning-button-icon name="btnClose" iconname="utility-close" class="slds-modal__close"
+                            size="large" variant="bare" alternativetext="Close" onclick={handleClick}>
+                        </lightning-button-icon>
+                        <template if:true={isDetailMode}>
+                            <h2 id="modal-heading-detail" class="slds-text-heading_medium slds-hyphenate">
+                                Invoice Detail
+                            </h2>
+                        </template>
+                        <template if:true={isEditMode}>
+                            <h2 id="modal-heading-edit" class="slds-text-heading_medium slds-hyphenate">
+                                Edit Invoice
+                            </h2>
+                        </template>
+                        <template if:true={isNewMode}>
+                            <h2 id="modal-heading-new" class="slds-text-heading_medium slds-hyphenate">
+                                New Invoice
+                            </h2>
+                        </template>
+                    </header>
+
+                    <!-- Body of Modal -->
+                    <div class="slds-modal__content slds-p-around_large slds-is-relative" id="modal-content-id-1">
+                        <div class="slds-grid slds-wrap slds-gutters">
+
+                            <!-- Account -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                                <lightning-input name="txtAccount" label="Account"
+                                    placeholder="Please enter the account" value={account} disabled={isDetailMode}>
+                                </lightning-input>
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning-select name="txtPaymentMethod" label="Payment Method" value={paymentMethod}
+                                    disabled={isDetailMode}>
+                                    <option value="">-- Please select the payment method --</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="credit_card">Credit Card</option>
+                                    <option value="e_wallet">E-Wallet</option>
+                                </lightning-select>
+                            </div>
+
+                            <!-- Status -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning-select name="txtStatus" label="Status" value={status}
+                                    disabled={isDetailMode}>
+                                    <option value="">-- Please select the status --</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="paid">Paid</option>
+                                    <option value="failed">Failed</option>
+                                    <option value="refund">Refund</option>
+                                    <option value="expired">Expired</option>
+                                </lightning-select>
+
+                            </div>
+
+                            <!-- Currency -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning-select name="txtCurrency" label="Currency" value={currency}
+                                    disabled={isDetailMode}>
+                                    <option value="">-- Please select the currency --</option>
+                                    <option value="IDR">IDR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="JPY">JPY</option>
+                                    <option value="KRW">KRW</option>
+                                </lightning-select>
+                            </div>
+
+                            <!-- Amount -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning-input name="txtAmount" label="Amount" placeholder="Please enter the amount"
+                                    value={amount} disabled={isDetailMode}>
+                                </lightning-input>
+                            </div>
+
+                            <!-- Payment Date -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning-input name="txtPaymentDate" type="datetime" label="Payment Date"
+                                    placeholder="Payment Date" value={paymentDate} disabled={isDetailMode}>
+                                </lightning-input>
+                            </div>
+
+                            <!-- Expired Date -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning-input name="txtExpiredDate" type="datetime" label="Expired Date"
+                                    placeholder="Expired Date" value={expiredDate} disabled={isDetailMode}>
+                                </lightning-input>
+                            </div>
+
+                            <!-- Payment Method Detail -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                                <lightning-textarea name="txtPaymentMethodDetail" label="Payment Method Detail"
+                                    placeholder="Please enter the payment method detail" value={paymentMethodDetail}
+                                    disabled={isDetailMode}>
+                                </lightning-textarea>
+                            </div>
+                        </div>
+
+                        <!-- Spinner overlay -->
+                        <template if:true={isLoadingModal}>
+                            <div class="slds-spinner_container"
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;">
+                                <lightning-spinner alternativetext="Loading..." size="medium"></lightning-spinner>
+                            </div>
+                        </template>
+                        <!-- Footer of Modal -->
+                        <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+
+                            <!-- LEFT: Delete Button -->
+                            <div>
+                                <!-- LEFT: Delete Button -->
+                                <div>
+                                    <template if:true={isDetailMode}>
+                                        <lightning-button name="btnDelete" variant="destructive" label="Delete"
+                                            title="Delete" onclick={handleClick}>
+                                        </lightning-button>
+                                    </template>
+                                </div>
+                                <div>
+                                    <lightning-button name="btnClose" variant="brand-outline" label="Cancel"
+                                        title="Cancel" onclick={handleClick}></lightning-button>
+
+                                    <template if:true={isEditMode}>
+                                        <lightning-button name="btnSave" variant="brand" label="Save" title="Save"
+                                            onclick={handleClick}></lightning-button>
+                                    </template>
+                                    <template if:true={isDetailMode}>
+                                        <lightning-button name="btnUpdate" variant="brand" label="Update" title="Update"
+                                            onclick={handleClick}></lightning-button>
+                                    </template>
+                                </div>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Backdrop for Modal -->
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>
+    </template>

@@ -1,0 +1,137 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome"
+    controller="BootcampSalesforceLeadsController">
+
+    <!-- ATTRIBUTES -->
+    <!-- Data Table -->
+    <aura:attribute name="leads" type="List" />
+    <aura:attribute name="tableHeaders" type="List" />
+
+    <!-- Form Fields -->
+    <aura:attribute name="firstName" type="String" />
+    <aura:attribute name="lastName" type="String" />
+    <aura:attribute name="email" type="String" />
+    <aura:attribute name="company" type="String" />
+
+    <!-- Modal Control -->
+    <aura:attribute name="showFormNew" type="Boolean" default="false" />
+    <aura:attribute name="isEditMode" type="Boolean" default="false" />
+
+    <!-- Selected Record -->
+    <aura:attribute name="selectedLead" type="Object" />
+
+    <!-- Loading State -->
+    <aura:attribute name="isLoading" type="Boolean" default="false" />
+
+    <!-- INIT -->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+
+    <!-- MAIN CARD -->
+    <lightning:card title="🚀 Your Awesome Leads List">
+        <aura:set attribute="actions">
+            <lightning:button name="btnNew" label="New" variant="brand" onclick="{!c.handleClick}" />
+        </aura:set>
+
+        <!-- LEADS TABLE -->
+        <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-table_striped">
+            <thead>
+                <tr>
+                    <aura:iteration items="{!v.tableHeaders}" var="header" indexVar="i">
+                        <th class="slds-text-align_center">{!header.columnLabel}</th>
+                    </aura:iteration>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration items="{!v.leads}" var="lead" indexVar="i">
+                    <tr onclick="{!c.handleRowClick}">
+                        <td>{!lead.FirstName}</td>
+                        <td>{!lead.LastName}</td>
+                        <td>{!lead.Email}</td>
+                        <td>{!lead.Company}</td>
+                    </tr>
+                </aura:iteration>
+            </tbody>
+        </table>
+
+        <!-- LOADING SPINNER -->
+        <aura:if isTrue="{!v.isLoading}">
+            <div class="slds-align_absolute-center slds-p-around_medium">
+                <lightning:spinner alternativeText="Loading..." size="small" />
+            </div>
+        </aura:if>
+    </lightning:card>
+
+    <!-- MODAL FORM (CREATE / UPDATE) -->
+    <aura:if isTrue="{!v.showFormNew}">
+        <div class="demo-only" style="height: 600px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true"
+                aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container">
+
+                    <!-- Header of Modal -->
+                    <header class="slds-modal__header">
+                        <lightning:buttonIcon name="btnClose" iconName="utility:close" class="slds-modal__close"
+                            size="large" variant="bare" alternativeText="Close" onclick="{! c.handleClick }" />
+                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">
+                            {!v.isEditMode ? 'Edit Lead' : 'Form New Lead'}
+                        </h2>
+                    </header>
+
+                    <!-- Body of Modal -->
+                    <div class="slds-modal__content slds-p-around_large" id="modal-content-id-1">
+                        <div class="slds-grid slds-wrap slds-gutters">
+
+                            <!-- First Name -->
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning:input aura:id="txtFirstName" name="txtFirstName" label="First Name"
+                                    placeholder="Please enter your first name" value="{!v.firstName}" />
+                            </div>
+
+                            <!-- Last Name -->
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning:input aura:id="txtLastName" name="txtLastName" label="Last Name"
+                                    placeholder="Please enter your last name" value="{!v.lastName}" required="true" />
+                            </div>
+
+                            <!-- Email -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                                <lightning:input aura:id="txtEmail" name="txtEmail" label="Email"
+                                    placeholder="Please enter your email" value="{!v.email}" />
+                            </div>
+
+                            <!-- Company -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                                <lightning:input aura:id="txtCompany" name="txtCompany" label="Company"
+                                    placeholder="Please enter your company" value="{!v.company}" required="true" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer of Modal -->
+                    <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+
+                        <!-- LEFT: Delete Button -->
+                        <div>
+                            <aura:if isTrue="{!v.isEditMode}">
+                                <lightning:button name="btnDelete" variant="destructive" label="Delete" title="Delete"
+                                    onclick="{! c.handleClick }" />
+                            </aura:if>
+                        </div>
+
+                        <!-- RIGHT: Cancel dan Save -->
+                        <div>
+                            <lightning:button name="btnClose" variant="brand-outline" label="Cancel" title="Cancel"
+                                onclick="{! c.handleClick }" />
+
+                            <lightning:button name="btnSave" variant="brand" label="Save" title="Save"
+                                onclick="{! c.handleClick }" />
+                        </div>
+
+                    </footer>
+                </div>
+            </section>
+
+            <!-- Backdrop for Modal -->
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>
+    </aura:if>
+</aura:component>

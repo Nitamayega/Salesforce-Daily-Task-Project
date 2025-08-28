@@ -1,0 +1,273 @@
+<aura:component implements="flexipage:availableForAllPageTypes,flexipage:availableForRecordHome"
+    controller="BootcampPaymentGatewayController">
+
+    <!-- ATTRIBUTES -->
+    <!-- Data Table -->
+    <aura:attribute name="invoices" type="Object[]" />
+    <aura:attribute name="tableHeaders" type="List" />
+
+    <!-- Form Fields -->
+    <aura:attribute name="account" type="String" />
+    <aura:attribute name="paymentMethod" type="String" />
+    <aura:attribute name="paymentDetails" type="String" />
+    <aura:attribute name="status" type="String" />
+    <aura:attribute name="currency" type="String" />
+    <aura:attribute name="amount" type="Decimal" />
+    <aura:attribute name="paymentDate" type="Datetime" />
+    <aura:attribute name="expiredDate" type="Datetime" />
+    <aura:attribute name="paymentMethodDetail" type="String" />
+
+    <!-- Modal Control -->
+    <aura:attribute name="showFormNew" type="Boolean" default="false" />
+    <aura:attribute name="isNewMode" type="Boolean" default="false" />
+    <aura:attribute name="isDetailMode" type="Boolean" default="false" />
+    <aura:attribute name="isEditMode" type="Boolean" default="false" />
+
+    <!-- Selected Record -->
+    <aura:attribute name="selectedInvoice" type="Object" />
+
+    <!-- Loading State -->
+    <aura:attribute name="isLoading" type="Boolean" default="false" />
+    <aura:attribute name="isLoadingModal" type="Boolean" default="false" />
+
+    <!-- INIT -->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+
+    <!-- MAIN CARD -->
+    <lightning:card title="📄 Invoice Central: Your Organized Records">
+        <aura:set attribute="actions">
+            <lightning:button name="btnRefresh" label="Refresh" variant="brand" onclick="{!c.handleClick}" />
+            <lightning:button name="btnNew" label="New" variant="brand" onclick="{!c.handleClick}" />
+        </aura:set>
+
+        <!-- Status Filter -->
+        <lightning:layout multipleRows="true" class="slds-p-horizontal_small slds-p-top_small">
+            <lightning:layoutItem size="12">
+                <lightning:select label="Filter by Status" aura:id="filterStatus" onchange="{! c.handleFilterChange }"
+                    class="slds-size_full slds-m-bottom_small">
+                    <option value="">-- All Statuses --</option>
+                    <option value="pending">🕐 Pending</option>
+                    <option value="paid">✅ Paid</option>
+                    <option value="failed">❌ Failed</option>
+                    <option value="refund">💸 Refund</option>
+                    <option value="expired">⏳ Expired</option>
+                </lightning:select>
+            </lightning:layoutItem>
+        </lightning:layout>
+
+
+        <!-- Payment Method Filter -->
+        <lightning:layout multipleRows="true" class="slds-p-horizontal_small slds-p-top_small">
+            <lightning:layoutItem size="12">
+                <lightning:select label="Filter by Payment Method" aura:id="filterMethod"
+                    onchange="{! c.handleFilterChange }" class="slds-size_full slds-m-bottom_small">
+                    <option value="">-- All Payment Methods --</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="credit_card">Credit Card</option>
+                    <option value="e_wallet">E-Wallet</option>
+                </lightning:select>
+            </lightning:layoutItem>
+        </lightning:layout>
+
+        <!-- INVOICES TABLE -->
+        <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-table_striped">
+            <thead>
+                <tr>
+                    <aura:iteration items="{!v.tableHeaders}" var="header" indexVar="i">
+                        <th class="slds-text-align_center">{!header.columnLabel}</th>
+                    </aura:iteration>
+                </tr>
+            </thead>
+            <tbody>
+                <aura:iteration items="{!v.invoices}" var="invoice" indexVar="i">
+                    <tr onclick="{!c.handleRowClick}">
+                        <td>{!invoice.id}</td>
+                        <td>{!invoice.customer.fullName}</td>
+                        <td>{!invoice.gross_amount}</td>
+                        <td>{!invoice.due_date}</td>
+                    </tr>
+                </aura:iteration>
+            </tbody>
+        </table>
+
+        <!-- LOADING SPINNER -->
+        <aura:if isTrue="{!v.isLoading}">
+            <div class="slds-align_absolute-center slds-p-around_medium">
+                <lightning:spinner alternativeText="Loading..." size="small" />
+            </div>
+        </aura:if>
+    </lightning:card>
+
+    <!-- MODAL FORM (CREATE / UPDATE) -->
+    <aura:if isTrue="{!v.showFormNew}">
+        <div class="demo-only" style="height: 600px;">
+            <section role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true"
+                aria-describedby="modal-content-id-1" class="slds-modal slds-fade-in-open">
+                <div class="slds-modal__container" style="position: relative;">
+                    <!-- Header of Modal -->
+                    <header class="slds-modal__header">
+                        <lightning:buttonIcon name="btnClose" iconName="utility:close" class="slds-modal__close"
+                            size="large" variant="bare" alternativeText="Close" onclick="{! c.handleClick }" />
+                        <aura:if isTrue="{!v.isDetailMode}">
+                            <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">
+                                Invoice Detail
+                            </h2>
+                            <aura:set attribute="else">
+                                <aura:if isTrue="{!v.isEditMode}">
+                                    <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">
+                                        Edit Invoice
+                                    </h2>
+                                    <aura:set attribute="else">
+                                        <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">
+                                            New Invoice
+                                        </h2>
+                                    </aura:set>
+                                </aura:if>
+                            </aura:set>
+                        </aura:if>
+                    </header>
+
+                    <!-- Body of Modal -->
+                    <div class="slds-modal__content slds-p-around_large slds-is-relative" id="modal-content-id-1">
+                        <div class="slds-grid slds-wrap slds-gutters">
+
+                            <!-- Account -->
+                            <aura:if isTrue="{!v.isNewMode}">
+                                <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                                    <lightning:input aura:id="txtAccount" name="txtAccount" label="Account"
+                                        placeholder="Please enter the account" value="{!v.account}"
+                                        disabled="{!v.isDetailMode}" />
+                                </div>
+                            </aura:if>
+
+                            <!-- Payment Method -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning:select aura:id="txtPaymentMethod" name="txtPaymentMethod"
+                                    label="Payment Method" value="{!v.paymentMethod}"
+                                    disabled="{!v.isDetailMode || v.isEditMode}">
+                                    <option value="">-- Please select the payment method --</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="credit_card">Credit Card</option>
+                                    <option value="e_wallet">E-Wallet</option>
+                                </lightning:select>
+                            </div>
+
+                            <!-- Payment Details -->
+                            <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                <lightning:input aura:id="txtPaymentDetails" name="txtPaymentDetails"
+                                    label="Payment Details" placeholder="Please enter the payment details"
+                                    value="{!v.paymentDetails}" disabled="{!v.isDetailMode || v.isEditMode}" />
+                            </div>
+
+                            <!-- Status -->
+                            <aura:if isTrue="{!v.isEditMode || v.isDetailMode}">
+                                <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                    <lightning:select aura:id="txtStatus" name="txtStatus" label="Status"
+                                        value="{!v.status}" disabled="{!v.isDetailMode}">
+                                        <option value="">-- Please select the status --</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="paid">Paid</option>
+                                        <option value="failed">Failed</option>
+                                        <option value="refund">Refund</option>
+                                        <option value="expired">Expired</option>
+                                    </lightning:select>
+                                </div>
+                            </aura:if>
+
+                            <!-- Currency -->
+                            <aura:if isTrue="{!v.isEditMode || v.isDetailMode}">
+                                <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                    <lightning:select aura:id="txtCurrency" name="txtCurrency" label="Currency"
+                                        value="{!v.currency}" disabled="{!v.isDetailMode || v.isEditMode}">
+                                        <option value="">-- Please select the currency --</option>
+                                        <option value="IDR">IDR</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="JPY">JPY</option>
+                                        <option value="KRW">KRW</option>
+                                    </lightning:select>
+                                </div>
+                            </aura:if>
+
+                            <!-- Amount -->
+                            <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                                <lightning:input aura:id="txtAmount" name="txtAmount" label="Amount"
+                                    placeholder="Please enter the amount" value="{!v.amount}"
+                                    disabled="{!v.isDetailMode}" />
+                            </div>
+
+                            <!-- Payment Date -->
+                            <aura:if isTrue="{!v.isEditMode || v.isDetailMode}">
+                                <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                    <lightning:input aura:id="txtPaymentDate" name="txtPaymentDate" type="datetime"
+                                        label="Payment Date" placeholder="Payment Date" value="{!v.paymentDate}"
+                                        disabled="{!v.isDetailMode || v.isEditMode}" />
+                                </div>
+                            </aura:if>
+
+                            <!-- Expired Date -->
+                            <aura:if isTrue="{!v.isEditMode || v.isDetailMode}">
+                                <div class="slds-col slds-size_1-of-2 slds-m-top_medium">
+                                    <lightning:input aura:id="txtExpiredDate" name="txtExpiredDate" type="datetime"
+                                        label="Expired Date" placeholder="Expired Date" value="{!v.expiredDate}"
+                                        disabled="{!v.isDetailMode || v.isEditMode}" />
+                                </div>
+                            </aura:if>
+
+                            <!-- Payment Method Detail -->
+                            <aura:if isTrue="{!v.isEditMode || v.isDetailMode}">
+                                <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+                                    <lightning:textarea aura:id="txtPaymentMethodDetail" name="txtPaymentMethodDetail"
+                                        label="Payment Method Detail"
+                                        placeholder="Please enter the payment method detail"
+                                        value="{!v.paymentMethodDetail}" disabled="{!v.isDetailMode || v.isEditMode}" />
+                                </div>
+                            </aura:if>
+                        </div>
+
+                        <!-- Spinner overlay -->
+                        <aura:if isTrue="{!v.isLoadingModal}">
+                            <div class="slds-spinner_container"
+                                style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999;">
+                                <lightning:spinner alternativeText="Loading..." size="medium" />
+                            </div>
+                        </aura:if>
+                    </div>
+
+                    <!-- Footer of Modal -->
+                    <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+
+                        <!-- LEFT: Delete Button -->
+                        <div>
+                            <aura:if isTrue="{!v.isDetailMode}">
+                                <lightning:button name="btnDelete" variant="destructive" label="Delete" title="Delete"
+                                    onclick="{! c.handleClick }" />
+                            </aura:if>
+                        </div>
+
+                        <!-- RIGHT: Cancel dan Save -->
+                        <div>
+                            <lightning:button name="btnClose" variant="brand-outline" label="Cancel" title="Cancel"
+                                onclick="{! c.handleClick }" />
+
+                            <aura:if isTrue="{!v.isEditMode || !v.isDetailMode}">
+                                <lightning:button name="btnSave" variant="brand" label="Save" title="Save"
+                                    onclick="{! c.handleClick }" />
+                            </aura:if>
+
+                            <aura:if isTrue="{!v.isDetailMode}">
+                                <lightning:button name="btnUpdate" variant="brand" label="Update" title="Update"
+                                    onclick="{! c.handleClick }" />
+                            </aura:if>
+                        </div>
+
+                    </footer>
+                </div>
+            </section>
+
+            <!-- Backdrop for Modal -->
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </div>
+
+    </aura:if>
+</aura:component>
